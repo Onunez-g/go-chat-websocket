@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -14,13 +15,14 @@ type Client struct {
 }
 
 type Message struct {
-	Type int    `json:"type"`
-	Body string `json:"body"`
+	Type int  `json:"type"`
+	Body Body `json:"body"`
 }
 
 type Body struct {
-	To  string `json:"to"`
-	Msg string `json:"msg"`
+	From string `json:"from"`
+	To   string `json:"to"`
+	Msg  string `json:"msg"`
 }
 
 func (c *Client) Read() {
@@ -29,12 +31,18 @@ func (c *Client) Read() {
 		c.Conn.Close()
 	}()
 	for {
+		var body Body
 		messageType, p, err := c.Conn.ReadMessage()
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		message := Message{Type: messageType, Body: string(p)}
+		if err := json.Unmarshal(p, &body); err != nil {
+			fmt.Print(string(p))
+			fmt.Errorf("Error: %s", err.Error())
+			continue
+		}
+		message := Message{Type: messageType, Body: body}
 		c.Pool.Broadcast <- message
 		fmt.Printf("Message Received: %+v\n", message)
 	}

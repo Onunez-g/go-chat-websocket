@@ -5,7 +5,7 @@ import "fmt"
 type Pool struct {
 	Register   chan *Client
 	Unregister chan *Client
-	Clients    map[*Client]bool
+	Clients    map[string]*Client
 	Broadcast  chan Message
 }
 
@@ -13,7 +13,7 @@ func NewPool() *Pool {
 	return &Pool{
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
-		Clients:    make(map[*Client]bool),
+		Clients:    make(map[string]*Client),
 		Broadcast:  make(chan Message),
 	}
 }
@@ -22,23 +22,39 @@ func (p *Pool) Start() {
 	for {
 		select {
 		case client := <-p.Register:
-			p.Clients[client] = true
+			p.Clients[client.ID] = client
 			fmt.Println("Size of Connection Pool: ", len(p.Clients))
-			for c := range p.Clients {
+			for _, c := range p.Clients {
 				fmt.Println(c)
-				client.Conn.WriteJSON(Message{Type: 1, Body: "New User Joined..."})
+				c.Conn.WriteJSON(Message{Type: 1, Body: Body{
+					From: "",
+					To:   "",
+					Msg:  fmt.Sprintf("New User joined: %s", client.ID),
+				}})
 			}
 			break
 		case client := <-p.Unregister:
-			delete(p.Clients, client)
+			delete(p.Clients, client.ID)
 			fmt.Println("Size of Connection Pool: ", len(p.Clients))
-			for c := range p.Clients {
-				c.Conn.WriteJSON(Message{Type: 1, Body: "User Disconnected..."})
+			for _, c := range p.Clients {
+				c.Conn.WriteJSON(Message{Type: 1, Body: Body{
+					From: "",
+					To:   "",
+					Msg:  fmt.Sprintf("%s disconnected", client.ID),
+				}})
 			}
 			break
 		case message := <-p.Broadcast:
+
+			if message.Body.To != "" {
+				fmt.Printf("Sending message to %s", message.Body.To)
+				if err := p.Clients[message.Body.To].Conn.WriteJSON(message); err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
 			fmt.Println("Sending message to all clients in Pool")
-			for c := range p.Clients {
+			for _, c := range p.Clients {
 				if err := c.Conn.WriteJSON(message); err != nil {
 					fmt.Println(err)
 					return
@@ -47,4 +63,12 @@ func (p *Pool) Start() {
 
 		}
 	}
+}
+
+func (p *Pool) GetClients() []string {
+	keys := make([]string, 0, len(p.Clients))
+	for k := range p.Clients {
+		keys = append(keys, k)
+	}
+	return keys
 }
