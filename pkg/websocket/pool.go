@@ -28,8 +28,8 @@ func (p *Pool) Start() {
 				fmt.Println(c)
 				c.Conn.WriteJSON(Message{Type: 1, Body: Body{
 					From: "",
-					To:   "",
-					Msg:  fmt.Sprintf("New User joined: %s", client.ID),
+					To:   "all",
+					Msg:  fmt.Sprintf("%s joined the chat!", client.ID),
 				}})
 			}
 			break
@@ -39,28 +39,33 @@ func (p *Pool) Start() {
 			for _, c := range p.Clients {
 				c.Conn.WriteJSON(Message{Type: 1, Body: Body{
 					From: "",
-					To:   "",
+					To:   "all",
 					Msg:  fmt.Sprintf("%s disconnected", client.ID),
 				}})
 			}
 			break
 		case message := <-p.Broadcast:
 
-			if message.Body.To != "" {
+			if message.Body.To == "all" || message.Body.To == "" {
+				fmt.Println("Sending message to all clients in Pool")
+				for _, c := range p.Clients {
+					if err := c.Conn.WriteJSON(message); err != nil {
+						fmt.Println(err)
+						return
+					}
+				}
+			} else {
 				fmt.Printf("Sending message to %s", message.Body.To)
 				if err := p.Clients[message.Body.To].Conn.WriteJSON(message); err != nil {
 					fmt.Println(err)
 					return
 				}
-			}
-			fmt.Println("Sending message to all clients in Pool")
-			for _, c := range p.Clients {
-				if err := c.Conn.WriteJSON(message); err != nil {
+				if err := p.Clients[message.Body.From].Conn.WriteJSON(message); err != nil {
 					fmt.Println(err)
 					return
 				}
+				fmt.Println("sent")
 			}
-
 		}
 	}
 }

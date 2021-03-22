@@ -17,6 +17,7 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 
 func clientsEndpoint(p *websocket.Pool, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	clients := p.GetClients()
 	response, err := json.Marshal(clients)
 	if err != nil {
