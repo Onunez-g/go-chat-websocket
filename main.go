@@ -65,5 +65,5 @@ func setupRoutes() *mux.Router {
 func main() {
 	fmt.Println("Welcome to websocket in go")
 	r := setupRoutes()
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":8000", r))
 }
