@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/onunez-g/go-websocket-tut/pkg/websocket"
@@ -63,7 +64,11 @@ func setupRoutes() *mux.Router {
 }
 
 func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
 	fmt.Println("Welcome to websocket in go")
 	r := setupRoutes()
-	log.Fatal(http.ListenAndServe(":8000", r))
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }
